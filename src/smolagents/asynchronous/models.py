@@ -14,7 +14,7 @@ class AsyncModel(Model):
             self,
             messages: list[dict[str, str | list[dict]]],
             stop_sequences: list[str] | None = None,
-            grammar: str | None = None,
+            response_format: dict[str, str] | None = None,
             tools_to_call_from: list[Tool] | None = None,
             **kwargs,
     ) -> ChatMessage:
@@ -24,7 +24,7 @@ class AsyncModel(Model):
         Args:
             messages (list[dict[str, str | list[dict]]]): The messages to send to the model.
             stop_sequences (list[str] | None): The stop sequences to use.
-            grammar (str | None): The grammar to use.
+            response_format (dict[str, str] | None): The response format to use.
             tools_to_call_from (list[Tool] | None): The tools to call from.
             **kwargs: Additional arguments to pass to the model.
 
@@ -40,7 +40,7 @@ class AsyncModel(Model):
             self,
             messages: list[dict[str, str | list[dict]]],
             stop_sequences: list[str] | None = None,
-            grammar: str | None = None,
+            response_format: dict[str, str] | None = None,
             tools_to_call_from: list[Tool] | None = None,
             **kwargs,
     ) -> AsyncGenerator[ChatMessageStreamDelta]:
@@ -50,7 +50,7 @@ class AsyncModel(Model):
         Args:
             messages (list[dict[str, str | list[dict]]]): The messages to send to the model.
             stop_sequences (list[str] | None): The stop sequences to use.
-            grammar (str | None): The grammar to use.
+            response_format (dict[str, str] | None): The response format to use.
             tools_to_call_from (list[Tool] | None): The tools to call from.
             **kwargs: Additional arguments to pass to the model.
 
@@ -156,7 +156,7 @@ class AsyncOpenAIServerModel(AsyncApiModel):
             self,
             messages: list[dict[str, str | list[dict]]],
             stop_sequences: list[str] | None = None,
-            grammar: str | None = None,
+            response_format: dict[str, str] | None = None,
             tools_to_call_from: list[Tool] | None = None,
             **kwargs,
     ) -> AsyncGenerator[ChatMessageStreamDelta]:
@@ -166,7 +166,7 @@ class AsyncOpenAIServerModel(AsyncApiModel):
         completion_kwargs = self._prepare_completion_kwargs(
             messages=messages,
             stop_sequences=stop_sequences,
-            grammar=grammar,
+            # grammar=grammar,
             tools_to_call_from=tools_to_call_from,
             model=self.model_id,
             custom_role_conversions=self.custom_role_conversions,
@@ -186,21 +186,21 @@ class AsyncOpenAIServerModel(AsyncApiModel):
                         content=event.choices[0].delta.content,
                     )
             if getattr(event, "usage", None):
-                self.last_input_token_count = event.usage.prompt_tokens
-                self.last_output_token_count = event.usage.completion_tokens
+                self._last_input_token_count = event.usage.prompt_tokens
+                self._last_output_token_count = event.usage.completion_tokens
 
     async def generate(
             self,
             messages: list[dict[str, str | list[dict]]],
             stop_sequences: list[str] | None = None,
-            grammar: str | None = None,
+            response_format: dict[str, str] | None = None,
             tools_to_call_from: list[Tool] | None = None,
             **kwargs,
     ) -> ChatMessage:
         completion_kwargs = self._prepare_completion_kwargs(
             messages=messages,
             stop_sequences=stop_sequences,
-            grammar=grammar,
+            # grammar=grammar,
             tools_to_call_from=tools_to_call_from,
             model=self.model_id,
             custom_role_conversions=self.custom_role_conversions,
@@ -208,8 +208,8 @@ class AsyncOpenAIServerModel(AsyncApiModel):
             **kwargs,
         )
         response = await self.client.chat.completions.create(**completion_kwargs)
-        self.last_input_token_count = response.usage.prompt_tokens
-        self.last_output_token_count = response.usage.completion_tokens
+        self._last_input_token_count = response.usage.prompt_tokens
+        self._last_output_token_count = response.usage.completion_tokens
 
         return ChatMessage.from_dict(
             response.choices[0].message.model_dump(include={"role", "content", "tool_calls"}),
