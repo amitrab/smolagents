@@ -31,6 +31,7 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+import copy
 
 from huggingface_hub import (
     CommitOperationAdd,
@@ -852,7 +853,8 @@ class ToolCollection:
     @classmethod
     @contextmanager
     def from_mcp(
-        cls, server_parameters: "mcp.StdioServerParameters" | dict, trust_remote_code: bool = False
+        cls, server_parameters: "mcp.StdioServerParameters" | dict, trust_remote_code: bool = False,
+        prefix: str = ""
     ) -> "ToolCollection":
         """Automatically load a tool collection from an MCP server.
 
@@ -884,7 +886,8 @@ class ToolCollection:
                 This option should only be set to `True` if you trust the MCP server,
                 and undertand the risks associated with running remote code on your local machine.
                 If set to `False`, loading tools from MCP will fail.
-
+            prefix (`str`, *optional*, defaults to `""`):
+                A prefix to add to the tool names.
 
         Returns:
             ToolCollection: A tool collection instance.
@@ -943,6 +946,10 @@ class ToolCollection:
                 "as it will execute code on your local machine: pass `trust_remote_code=True`."
             )
         with MCPAdapt(server_parameters, SmolAgentsAdapter()) as tools:
+            if prefix:
+                tools = [copy.copy(t) for t in tools]
+                for t in tools:
+                    t.name = prefix + t.name
             yield cls(tools)
 
 
